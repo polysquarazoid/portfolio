@@ -1,0 +1,71 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta
+      name="description"
+      content="Polysquarazoid — pixel art, Minecraft models, renders, videos, and web design."
+    />
+    <meta name="theme-color" content="#10100f" />
+    <meta property="og:title" content="Polysquarazoid — Portfolio" />
+    <meta
+      property="og:description"
+      content="Pixel art, Minecraft models, renders, videos, and web design."
+    />
+    <meta property="og:type" content="website" />
+    <link rel="icon" href="assets/head.png" type="image/png" />
+    <link rel="stylesheet" href="styles.css" />
+    <script src="script.js" defer></script>
+    <title>Polysquarazoid — Portfolio</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#work">Skip to gallery</a>
+
+    <header class="site-header" data-header>
+      <a class="identity" href="#work" aria-label="Polysquarazoid, back to gallery">
+        <img src="assets/head.png" alt="" width="30" height="30" />
+        <span>Polysquarazoid</span>
+      </a>
+
+      <nav class="section-nav" aria-label="Portfolio sections" data-section-nav>
+        <a href="#pixel-art">Pixel Art</a>
+        <a href="#models">Models</a>
+        <a href="#textures">Textures</a>
+        <a href="#renders">Renders</a>
+        <a href="#videos">Videos</a>
+        <a href="#web-design">Web Design</a>
+        <span class="nav-indicator" data-nav-indicator aria-hidden="true"></span>
+      </nav>
+    </header>
+
+    <main class="gallery-shell" id="work" aria-label="Portfolio gallery">
+      <div class="gallery gallery--work" data-gallery="work"></div>
+    </main>
+
+    <footer>
+      <a href="#work">Back to top <span aria-hidden="true">↑</span></a>
+      <p>Polysquarazoid <span aria-hidden="true">©</span> 2026</p>
+      <span aria-hidden="true"></span>
+    </footer>
+
+    <dialog class="lightbox" data-lightbox aria-label="Artwork viewer">
+      <button class="lightbox-close" type="button" data-lightbox-close>
+        Close <span>(ESC)</span>
+      </button>
+      <div class="lightbox-stage" data-lightbox-stage></div>
+      <div class="lightbox-meta">
+        <p data-lightbox-title></p>
+        <p data-lightbox-count></p>
+      </div>
+      <div class="lightbox-controls" aria-label="Gallery controls">
+        <button type="button" data-lightbox-prev aria-label="Previous item">←</button>
+        <button type="button" data-lightbox-next aria-label="Next item">→</button>
+      </div>
+    </dialog>
+
+    <noscript>
+      <p class="noscript">Please enable JavaScript to view the portfolio gallery.</p>
+    </noscript>
+  </body>
+</html>
