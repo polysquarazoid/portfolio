@@ -6,6 +6,7 @@ const portfolio = {
   videos: [["Fossil Frights", "assets/videos/fossil-frights-video-thumbnail.jpg", "l8Zh0ztY92s"], ["Heists", "assets/videos/fossil-heists-video-thumbnail.jpg", "9ccj6D9mVdQ"]],
   "web-design": [["Atlas Cleaner", "assets/web-design/atlas-cleaner.jpg", null, "https://zeroniaserver.github.io/atlas-cleaner/"], ["Zeronia · Run Breakdown", "assets/web-design/zeronia-run-breakdown.jpg", null, "https://zeronia.org"]],
 };
+const portfolioItems = Object.entries(portfolio).flatMap(([category, items]) => items.map((item, index) => ({ category, index, item })));
 
 const gallery = document.querySelector('[data-gallery="work"]');
 const lightbox = document.querySelector("[data-lightbox]");
@@ -18,26 +19,33 @@ const navIndicator = document.querySelector("[data-nav-indicator]");
 let activeGallery = [];
 let activeIndex = 0;
 
-function getBaseSpan(category, ratio) {
-  if (category === "pixel-art") return ratio > 2.6 ? 5 : ratio > 1.35 ? 4 : 2;
-  if (category === "models") return ratio > 1.75 ? 3 : 2;
-  if (category === "textures") return ratio > 2 ? 6 : 4;
-  if (category === "renders") return ratio > 2 ? 6 : ratio < 1.1 ? 3 : 4;
-  if (category === "web-design") return ratio > 1.4 ? 5 : 4;
-  return 4;
+const featuredTiles = {
+  "Crystal Caverns": { size: 3, frameRatio: 1.2 },
+  Dinoland: { size: 3, frameRatio: 2.1 },
+  "Fossil Frights": { size: 3, frameRatio: 1.65 },
+  "Fossil Heists": { size: 2, frameRatio: 1.8 },
+  "Fossil Frights · Holiday": { size: 2, frameRatio: 1.9 },
+  "Fossil Frights · Halloween Alt": { size: 2, frameRatio: 1.9 },
+  "Fossil Frights · Halloween": { size: 2, frameRatio: 1.9 },
+};
+
+function getTileSpec(title, category, ratio) {
+  const featured = featuredTiles[title];
+  if (featured) return featured;
+
+  if (category === "pixel-art") return { size: ratio < 1.2 ? 1 : 2 };
+  if (category === "models") return { size: ratio > 1.3 ? 2 : 1 };
+  if (category === "textures") return { size: ratio > 1.8 ? 3 : 2 };
+  if (category === "renders") return { size: ratio > 1.7 ? 3 : 2 };
+  if (category === "videos" || category === "web-design") return { size: 3 };
+  return { size: 2 };
 }
 
 function sizeTile(tile, image) {
   if (!image.naturalWidth || !image.naturalHeight) return;
-  const galleryStyle = getComputedStyle(gallery);
-  const columns = Number.parseInt(galleryStyle.getPropertyValue("--columns"), 10) || 12;
   const ratio = image.naturalWidth / image.naturalHeight;
-  const span = Math.min(getBaseSpan(tile.dataset.category, ratio), columns);
-  const gap = Number.parseFloat(galleryStyle.gap);
-  const width = ((gallery.clientWidth - (columns - 1) * gap) / columns) * span + (span - 1) * gap;
-  const rows = Math.max(9, Math.ceil((width / ratio + gap) / (Number.parseFloat(galleryStyle.gridAutoRows) + gap)));
-  tile.style.setProperty("--span", span);
-  tile.style.setProperty("--rows", rows);
+  const spec = getTileSpec(tile.dataset.title, tile.dataset.category, ratio);
+  tile.dataset.size = spec.size;
 }
 
 function createTile(item, category, index, position) {
@@ -46,6 +54,7 @@ function createTile(item, category, index, position) {
   const image = document.createElement("img");
   const kind = category === "pixel-art" ? "pixel" : category === "models" ? "model" : category === "textures" ? "texture" : "image";
   tile.className = `tile is-${kind}`;
+  if (videoId) tile.classList.add("is-video");
   if (!externalUrl) tile.type = "button";
   if (externalUrl) {
     tile.href = externalUrl;
@@ -53,6 +62,8 @@ function createTile(item, category, index, position) {
     tile.rel = "noreferrer";
   }
   tile.dataset.category = category;
+  tile.dataset.title = title;
+  tile.dataset.index = index;
   tile.setAttribute("aria-label", `${externalUrl ? "Visit" : videoId ? "Play" : "View"} ${title}`);
   if (index === 0) {
     tile.id = category;
@@ -65,12 +76,14 @@ function createTile(item, category, index, position) {
   image.addEventListener("load", () => sizeTile(tile, image));
   tile.append(image);
 
-  if (videoId) {
-    const play = document.createElement("span");
-    play.className = "play-icon";
-    play.setAttribute("aria-hidden", "true");
-    play.innerHTML = "<span>▶</span>";
-    tile.append(play);
+  if (videoId || externalUrl) {
+    const control = document.createElement("span");
+    control.className = `play-icon${externalUrl ? " is-external" : ""}`;
+    control.setAttribute("aria-hidden", "true");
+    control.innerHTML = externalUrl
+      ? '<img src="assets/external-link-pixel.svg" alt=""/>'
+      : "<span>▶</span>";
+    tile.append(control);
   }
 
   if (!externalUrl) tile.addEventListener("click", () => openLightbox(category, index));
@@ -78,18 +91,55 @@ function createTile(item, category, index, position) {
 }
 
 let position = 0;
-Object.entries(portfolio).forEach(([category, items]) => {
-  items.forEach((item, index) => gallery.append(createTile(item, category, index, position++)));
-});
+const portfolioTiles = Object.entries(portfolio).map(([category, items]) => [category, items.map((item, index) => createTile(item, category, index, position++))]);
+let renderedColumns = 0;
+
+function getColumnCount() {
+  if (window.innerWidth <= 800) return 2;
+  if (window.innerWidth <= 1100) return 3;
+  return 4;
+}
+
+function renderMasonry() {
+  const columnCount = getColumnCount();
+  const columns = Array.from({ length: columnCount }, () => {
+    const column = document.createElement("div");
+    column.className = "gallery-column";
+    return column;
+  });
+  const heights = Array(columnCount).fill(0);
+
+  portfolioTiles.forEach(([, tiles]) => {
+    tiles.forEach((tile) => {
+      const image = tile.querySelector("img");
+      const ratio = image.naturalWidth && image.naturalHeight ? image.naturalWidth / image.naturalHeight : 1;
+      const column = heights.indexOf(Math.min(...heights));
+      columns[column].append(tile);
+      heights[column] += 1 / Math.min(Math.max(ratio, 0.65), 2.5);
+    });
+  });
+
+  gallery.replaceChildren(...columns);
+  renderedColumns = columnCount;
+}
+
+renderMasonry();
 
 function sizeAllTiles() { gallery.querySelectorAll(".tile img").forEach((image) => sizeTile(image.closest(".tile"), image)); }
-function openLightbox(category, index) { activeGallery = portfolio[category]; activeIndex = index; renderLightbox(category); lightbox.showModal(); }
+function openLightbox(category, index) {
+  activeGallery = portfolioItems;
+  activeIndex = activeGallery.findIndex((entry) => entry.category === category && entry.index === index);
+  renderLightbox();
+  lightbox.showModal();
+}
 
-function renderLightbox(category) {
-  const [title, source, videoId] = activeGallery[activeIndex];
+function renderLightbox() {
+  const { category, index, item } = activeGallery[activeIndex];
+  const [title, source, videoId] = item;
   lightboxStage.replaceChildren();
   if (videoId) {
     const frame = document.createElement("iframe");
+    frame.style.aspectRatio = "16 / 9";
     frame.src = `https://www.youtube-nocookie.com/embed/${videoId}?autoplay=1&rel=0`;
     frame.title = title;
     frame.allow = "accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share";
@@ -103,11 +153,12 @@ function renderLightbox(category) {
     lightboxStage.append(image);
   }
   lightbox.dataset.category = category;
+  lightbox.dataset.index = index;
   lightboxTitle.textContent = title;
   lightboxCount.textContent = `${String(activeIndex + 1).padStart(2, "0")} / ${String(activeGallery.length).padStart(2, "0")}`;
 }
 
-function changeLightbox(direction) { activeIndex = (activeIndex + direction + activeGallery.length) % activeGallery.length; renderLightbox(lightbox.dataset.category); }
+function changeLightbox(direction) { activeIndex = (activeIndex + direction + activeGallery.length) % activeGallery.length; renderLightbox(); }
 function closeLightbox() { lightbox.close(); lightboxStage.replaceChildren(); }
 
 function setActiveNav(activeLink) {
@@ -126,7 +177,10 @@ lightbox.addEventListener("click", (event) => { if (event.target === lightbox ||
 lightbox.addEventListener("cancel", (event) => { event.preventDefault(); closeLightbox(); });
 document.addEventListener("keydown", (event) => { if (!lightbox.open) return; if (event.key === "ArrowLeft") changeLightbox(-1); if (event.key === "ArrowRight") changeLightbox(1); });
 navLinks.forEach((link) => link.addEventListener("click", () => setActiveNav(link)));
-window.addEventListener("resize", () => { sizeAllTiles(); setActiveNav(nav.querySelector(".is-active") || navLinks[0]); });
+window.addEventListener("resize", () => {
+  if (renderedColumns !== getColumnCount()) renderMasonry();
+  setActiveNav(nav.querySelector(".is-active") || navLinks[0]);
+});
 
 const markers = navLinks.map((link) => document.querySelector(link.hash)).filter(Boolean);
 const sectionObserver = new IntersectionObserver((entries) => {
